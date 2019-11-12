@@ -1,0 +1,19 @@
+{
+  "name": "misslecommand",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/robschroeder333/missleCommand.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/robschroeder333/missleCommand/issues"
+  },
+  "homepage": "https://github.com/robschroeder333/missleCommand#readme"
+}
