@@ -42,7 +42,7 @@ for (let index = 1; index <= 4; index++) {
 const targetArray = []
 const target = (event) => {
 	const target = {
-		cycles: 1000,
+		cycles: 50,
 		origin: [
 			event.clientX,
 			event.clientY
@@ -57,7 +57,7 @@ const target = (event) => {
 		line: {
 			start: weighBases(event.clientX),
 			color: 'yellow',
-			length: 2			
+			length: .01			
 		},
 		explosionSize: 20,
 		expolosionColor: 'yellow',
@@ -76,32 +76,30 @@ const target = (event) => {
 		target.line.vector[1] / target.line.magnitude
 	]
 	target.line.end = [
-		target.line.start[0] + (target.line.vector[0] * target.line.length), 
-		target.line.start[1] * (target.line.vector[1] * target.line.length)
+		target.line.start[0] + ((target.line.magnitude * target.line.length) * target.line.vector[0]), 
+		target.line.start[1] + ((target.line.magnitude * target.line.length) * target.line.vector[1])
 	]
-	
-	target.draw = () => {
-		if (target.cycles > 0) {				
-			context.strokeStyle = target.reticle.color
-			context.strokeRect(
-				target.reticle.offset[0], 
-				target.reticle.offset[1], 
-				target.reticle.dimensions[0],
-				target.reticle.dimensions[1]
-			)	
-			
-			if (target.cycles < 900 && target.cycles > 500) {
-				context.strokeStyle = target.line.color
-				context.beginPath()
-				context.moveTo(target.line.start[0], target.line.start[1])
-				context.lineTo(target.line.end)
-				context.stroke()
-				target.line.end += target.vector
+	target.draw = () => {			
+		context.strokeStyle = target.reticle.color
+		context.strokeRect(
+			target.reticle.offset[0], 
+			target.reticle.offset[1], 
+			target.reticle.dimensions[0],
+			target.reticle.dimensions[1]
+		)	
+		
+		if (target.cycles < 49 && target.cycles > 20) {
+			console.log(target.line.start[0] + ((target.line.magnitude * target.line.length) * target.line.vector[0]))
+			context.strokeStyle = target.line.color
+			context.beginPath()
+			context.moveTo(target.line.start[0], target.line.start[1])
+			context.lineTo(target.line.end[0], target.line.end[1])
+			context.stroke()
+			if (target.line.length < 1 ) {
+				target.line.length += .05
 			}
-			target.cycles--
-		} else {
-			target
-		}
+		}		
+		target.cycles--
 	}
 	targetArray.push(target)
 }
@@ -118,18 +116,16 @@ setInterval(() => {
 		window.innerWidth, 
 		window.innerHeight / 10
 	)
-	baseArray.forEach((ele) => {
+	baseArray.forEach(ele => {
 		context.fillStyle = ele.color()
 		context.fillRect(ele.origin[0], ele.origin[1], ele.dimensions[0], ele.dimensions[1])
 	})
 
-	targetArray.forEach((ele, i) => {
+	targetArray.filter(ele => {
 		if (ele.cycles > 0) {
 			ele.draw()
-		} else {
-			//remove
+			return ele
 		}
-		
 	})
 }, 100)
 
