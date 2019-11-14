@@ -9,14 +9,15 @@ document.body.appendChild(source)
 
 const context = source.getContext('2d', {alpha: 'false'})
 
-
 const baseArray = []
+//create bases
 for (let index = 1; index <= 4; index++) {
 	const base = {
 		origin: [
 			((window.innerWidth / 5) * index ) - ((window.innerWidth / 10) / 2),
 			window.innerHeight - ((window.innerHeight / 10) + (window.innerHeight / 20))
 		],
+		canFire: true,
 		health: 2,
 		dimensions: [
 			window.innerWidth / 10,
@@ -35,17 +36,22 @@ for (let index = 1; index <= 4; index++) {
 			}
 		}
 	}
+	base.fireFrom = () => [
+		base.origin[0] + base.dimensions[0] / 2, 
+		base.origin[1]
+	]
 	baseArray.push(base)
 }
 
-
 const targetArray = []
+//when mouse click occurs attemp to create target and fire
 const target = (event) => {
+	context.save()
 	const target = {
 		cycles: 50,
 		origin: [
-			event.clientX,
-			event.clientY
+			event.clientX - 8,
+			event.clientY - 8
 		],
 		reticle: {
 			dimensions: [
@@ -54,32 +60,41 @@ const target = (event) => {
 			],
 			color: 'green'
 		},
-		line: {
-			start: weighBases(event.clientX),
+		line: {			
 			color: 'yellow',
-			length: .01			
+			progress: .01			
 		},
 		explosionSize: 20,
 		expolosionColor: 'yellow',
 	}
 	target.reticle.offset = [
-		target.origin[0] - target.reticle.dimensions[0] - 3,
-		target.origin[1] - target.reticle.dimensions[1] - 3
+		target.origin[0] - target.reticle.dimensions[0] / 2,
+		target.origin[1] - target.reticle.dimensions[1] / 2
 	]
+	const source = weighBases(event.clientX)
+	if (source === -1) {
+		return
+	} else {
+		target.line.source = source
+	}
+	target.line.start = source.fireFrom()
 	target.line.vector = [
 		target.origin[0] - target.line.start[0],
 		target.origin[1] - target.line.start[1]		
 	]
-	target.line.magnitude = Math.sqrt(Math.pow(target.line.vector[0], 2) + Math.pow(target.line.vector[1], 2))
+	target.line.magnitude = Math.sqrt(Math.pow(target.line.vector[0], 2) 
+	+ Math.pow(target.line.vector[1], 2))
 	target.line.vector = [
 		target.line.vector[0] / target.line.magnitude, 
 		target.line.vector[1] / target.line.magnitude
 	]
-	target.line.end = [
-		target.line.start[0] + ((target.line.magnitude * target.line.length) * target.line.vector[0]), 
-		target.line.start[1] + ((target.line.magnitude * target.line.length) * target.line.vector[1])
+	target.line.end = () => [
+		target.line.start[0] + ((target.line.magnitude * target.line.progress) * target.line.vector[0]), 
+		target.line.start[1] + ((target.line.magnitude * target.line.progress) * target.line.vector[1])
 	]
-	target.draw = () => {			
+	target.line.source.canFire = false
+
+	target.draw = () => {		
 		context.strokeStyle = target.reticle.color
 		context.strokeRect(
 			target.reticle.offset[0], 
@@ -88,17 +103,19 @@ const target = (event) => {
 			target.reticle.dimensions[1]
 		)	
 		
-		if (target.cycles < 49 && target.cycles > 20) {
-			console.log(target.line.start[0] + ((target.line.magnitude * target.line.length) * target.line.vector[0]))
+		if (target.cycles < 49 && target.cycles > 20) {		
 			context.strokeStyle = target.line.color
 			context.beginPath()
 			context.moveTo(target.line.start[0], target.line.start[1])
-			context.lineTo(target.line.end[0], target.line.end[1])
+			context.lineTo(target.line.end()[0], target.line.end()[1])
 			context.stroke()
-			if (target.line.length < 1 ) {
-				target.line.length += .05
-			}
-		}		
+			if (target.line.progress < 1 ) {
+				target.line.progress += .04
+			}			
+		}	
+		if (target.cycles < 20) {
+			target.line.source.canFire = true
+		}	
 		target.cycles--
 	}
 	targetArray.push(target)
@@ -106,7 +123,9 @@ const target = (event) => {
 
 document.addEventListener('click', target)
 
+//gameLoop
 setInterval(() => {
+	context.clearRect(0, 0, window.innerWidth, window.innerHeight)
 	context.fillStyle = 'black'
 	context.fillRect(0, 0, window.innerWidth, window.innerHeight) // background
 	context.fillStyle = 'brown'
@@ -129,6 +148,7 @@ setInterval(() => {
 	})
 }, 100)
 
+//determine which base, if any, can fire at target
 function weighBases(targetX) {
 	let result = []
 	let choice
@@ -136,18 +156,23 @@ function weighBases(targetX) {
 
 	baseArray.forEach((base, i) => {
 		const weight = Math.abs(targetX - base.origin[0])
-		if (choice === undefined){
-			choice = i
-			lowest = weight
-		} else {
-			Math.abs(targetX - base.origin[0])
-			if (lowest > weight) {
-				lowest = weight
+		if (base.health > 0 && base.canFire) {
+			if (choice === undefined){
 				choice = i
+				lowest = weight
+			} else {
+				if (lowest > weight) {
+					lowest = weight
+					choice = i
+				}
 			}
 		}
 	})
-	result = [baseArray[choice].origin[0], baseArray[choice].origin[1]]
+	if (choice !== undefined) {
+		result = baseArray[choice]
+	} else {
+		result = -1
+	}
 	return result
 }
 function assignAttributes(element, attributes) {
