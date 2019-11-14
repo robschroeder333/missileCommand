@@ -64,15 +64,19 @@ const target = (event) => {
 			color: 'yellow',
 			progress: .01			
 		},
-		explosionSize: 20,
-		expolosionColor: 'yellow',
+		explosion: {
+			maxSize: 30,
+			color: 'yellow',
+			size: 1
+		}
+		
 	}
 	target.reticle.offset = [
 		target.origin[0] - target.reticle.dimensions[0] / 2,
 		target.origin[1] - target.reticle.dimensions[1] / 2
 	]
 	const source = weighBases(event.clientX)
-	if (source === -1) {
+	if (source === null) {
 		return
 	} else {
 		target.line.source = source
@@ -83,7 +87,7 @@ const target = (event) => {
 		target.origin[1] - target.line.start[1]		
 	]
 	target.line.magnitude = Math.sqrt(Math.pow(target.line.vector[0], 2) 
-	+ Math.pow(target.line.vector[1], 2))
+										+ Math.pow(target.line.vector[1], 2))
 	target.line.vector = [
 		target.line.vector[0] / target.line.magnitude, 
 		target.line.vector[1] / target.line.magnitude
@@ -94,16 +98,18 @@ const target = (event) => {
 	]
 	target.line.source.canFire = false
 
+
 	target.draw = () => {		
-		context.strokeStyle = target.reticle.color
-		context.strokeRect(
-			target.reticle.offset[0], 
-			target.reticle.offset[1], 
-			target.reticle.dimensions[0],
-			target.reticle.dimensions[1]
-		)	
-		
-		if (target.cycles < 49 && target.cycles > 20) {		
+		if (target.cycles > 35) {
+			context.strokeStyle = target.reticle.color
+			context.strokeRect(
+				target.reticle.offset[0], 
+				target.reticle.offset[1], 
+				target.reticle.dimensions[0],
+				target.reticle.dimensions[1]
+			)	
+		}		
+		if (target.cycles > 15) {		
 			context.strokeStyle = target.line.color
 			context.beginPath()
 			context.moveTo(target.line.start[0], target.line.start[1])
@@ -115,6 +121,12 @@ const target = (event) => {
 		}	
 		if (target.cycles < 20) {
 			target.line.source.canFire = true
+			context.fillStyle = 'red'
+			context.strokeStyle = 'yellow'
+			context.beginPath()
+			context.arc(target.origin[0], target.origin[1], target.explosion.size, 0, 360)
+			context.fill()
+			target.explosion.size += target.explosion.maxSize / 20
 		}	
 		target.cycles--
 	}
@@ -150,7 +162,6 @@ setInterval(() => {
 
 //determine which base, if any, can fire at target
 function weighBases(targetX) {
-	let result = []
 	let choice
 	let lowest
 
@@ -169,11 +180,10 @@ function weighBases(targetX) {
 		}
 	})
 	if (choice !== undefined) {
-		result = baseArray[choice]
+		return baseArray[choice]
 	} else {
-		result = -1
+		return null
 	}
-	return result
 }
 function assignAttributes(element, attributes) {
 	Object.keys(attributes).forEach(key => element.setAttribute(key, attributes[key]))
