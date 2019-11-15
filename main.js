@@ -43,7 +43,7 @@ for (let index = 1; index <= 4; index++) {
 	baseArray.push(base)
 }
 
-const targetArray = []
+let targetArray = []
 //when mouse click occurs attemp to create target and fire
 const target = (event) => {
 	context.save()
@@ -66,7 +66,7 @@ const target = (event) => {
 		},
 		explosion: {
 			maxSize: 30,
-			color: 'yellow',
+			color: ['red', 'yellow'],
 			size: 1
 		}
 		
@@ -121,12 +121,26 @@ const target = (event) => {
 		}	
 		if (target.cycles < 20) {
 			target.line.source.canFire = true
-			context.fillStyle = 'red'
-			context.strokeStyle = 'yellow'
+			context.fillStyle = target.explosion.color[0]
+			context.strokeStyle = target.explosion.color[1]
 			context.beginPath()
 			context.arc(target.origin[0], target.origin[1], target.explosion.size, 0, 360)
 			context.fill()
+			context.stroke()
 			target.explosion.size += target.explosion.maxSize / 20
+			missleArray = missleArray.filter(ele => {
+				const colided = (origin, target) => {
+					console.log(target.explosion.size)
+					return Math.pow(origin[0] - target.origin[0], 2) 
+							+ Math.pow(origin[1] - target.origin[1], 2)
+							<= Math.pow(target.explosion.size, 2)
+				}
+				
+				if (colided(ele.origin, target)) {					
+					ele.explode = true
+				}
+				return ele
+			})
 		}	
 		target.cycles--
 	}
@@ -135,7 +149,7 @@ const target = (event) => {
 
 document.addEventListener('click', target)
 
-const missleArray = []
+let missleArray = []
 let missleDelay = 0
 const missleSpawner = () => {
 	const targetChoice = Math.floor(Math.random() * 4)
@@ -144,7 +158,10 @@ const missleSpawner = () => {
 			Math.random() * (window.innerWidth - 20) + 20,
 			10
 		],
+		cycles: 20,
+		explode: false,
 		target: baseArray[targetChoice].fireFrom(),
+		base: targetChoice,
 		length: 10,
 		speed: () => {
 			if (difficulty > 10 && difficulty < 15) {
@@ -154,8 +171,22 @@ const missleSpawner = () => {
 			} else {
 				return 3
 			}
-		}		
+		},
+		explosion: {
+			maxSize: 10,
+			color: ['red', 'yellow'],
+			size: 1
+		}			
 	}
+	missle.drawExplosion = () => {
+		context.fillStyle = missle.explosion.color[0]
+		context.strokeStyle = missle.explosion.color[1]
+		context.beginPath()
+		context.arc(missle.origin[0], missle.origin[1], missle.explosion.size, 0, 360)
+		context.fill()
+		context.stroke()
+		missle.explosion.size += missle.explosion.maxSize / 20
+	}	
 	missle.vector = [
 		missle.target[0] - missle.origin[0],
 		missle.target[1] - missle.origin[1]
@@ -166,7 +197,7 @@ const missleSpawner = () => {
 		missle.vector[0] / missle.magnitude,
 		missle.vector[1] / missle.magnitude,
 	]
-	if (difficulty + 3 > missleArray.length)	{
+	if (difficulty + 3 > missleArray.length) {		
 		missleArray.push(missle)
 	}								
 	difficulty = difficulty > 20 ? 20 : Math.floor(score / 10)
@@ -194,18 +225,33 @@ setInterval(() => {
 		context.fillRect(ele.origin[0], ele.origin[1], ele.dimensions[0], ele.dimensions[1])
 	})
 
-	missleArray.forEach(ele => {
-		context.strokeStyle = 'white'
-		context.beginPath()
-		context.moveTo(ele.origin[0], ele.origin[1])
-		context.lineTo(
-			ele.origin[0] - (ele.vector[0] * ele.length), 
-			ele.origin[1] - (ele.vector[1] * ele.length))
-		context.stroke()
-		ele.origin[0] = ele.origin[0] + ele.vector[0] * ele.speed()
-		ele.origin[1] = ele.origin[1] + ele.vector[1] * ele.speed()
+	missleArray = missleArray.filter(ele => {
+		if (ele.cycles > 0) {
+			if (!ele.explode) {
+				context.strokeStyle = 'white'
+				context.lineWidth = 3
+				context.beginPath()
+				context.moveTo(ele.origin[0], ele.origin[1])
+				context.lineTo(
+					ele.origin[0] - (ele.vector[0] * ele.length), 
+					ele.origin[1] - (ele.vector[1] * ele.length))
+				context.stroke()
+				context.lineWidth = 1
+			}
+			if (ele.explode) {
+				ele.drawExplosion()
+				ele.cycles--
+			} else if (ele.origin[1] >= ele.target[1]) {
+				ele.explode = true
+				baseArray[ele.base].health = Math.max(0, baseArray[ele.base].health - 1)
+			} else {
+				ele.origin[0] = ele.origin[0] + ele.vector[0] * ele.speed()
+				ele.origin[1] = ele.origin[1] + ele.vector[1] * ele.speed()
+			}
+			return ele
+		}
 	})
-	targetArray.filter(ele => {
+	targetArray = targetArray.filter(ele => {
 		if (ele.cycles > 0) {
 			ele.draw()
 			return ele
