@@ -46,7 +46,6 @@ for (let index = 1; index <= 4; index++) {
 let targetArray = []
 //when mouse click occurs attemp to create target and fire
 const target = (event) => {
-	context.save()
 	const target = {
 		cycles: 50,
 		origin: [
@@ -119,7 +118,7 @@ const target = (event) => {
 				target.line.progress += .04
 			}			
 		}	
-		if (target.cycles < 20) {
+		if (target.cycles <= 25) {
 			target.line.source.canFire = true
 			context.fillStyle = target.explosion.color[0]
 			context.strokeStyle = target.explosion.color[1]
@@ -147,7 +146,7 @@ const target = (event) => {
 	targetArray.push(target)
 }
 
-document.addEventListener('click', target)
+
 
 let missleArray = []
 let missleDelay = 0
@@ -206,62 +205,72 @@ const missleSpawner = () => {
 
 let score = 0
 let difficulty = 1
+let gameOver = false
 
 
-//gameLoop
-setInterval(() => {
-	context.clearRect(0, 0, window.innerWidth, window.innerHeight)
-	context.fillStyle = 'black'
-	context.fillRect(0, 0, window.innerWidth, window.innerHeight) // background
-	context.fillStyle = 'brown'
-	context.fillRect( //ground
-		0, 
-		window.innerHeight - (window.innerHeight / 10), 
-		window.innerWidth, 
-		window.innerHeight / 10
-	)
-	baseArray.forEach(ele => {
-		context.fillStyle = ele.color()
-		context.fillRect(ele.origin[0], ele.origin[1], ele.dimensions[0], ele.dimensions[1])
-	})
+const gameStart = function () {
+	document.getElementById('opening').remove()
+	setTimeout(() => {
+		document.addEventListener('click', target)		
+	}, 200)
+	setInterval(() => {//gameLoop
+		context.clearRect(0, 0, window.innerWidth, window.innerHeight)
+		context.fillStyle = 'black'
+		context.fillRect(0, 0, window.innerWidth, window.innerHeight) // background
+		context.fillStyle = 'brown'
+		context.fillRect( //ground
+			0, 
+			window.innerHeight - (window.innerHeight / 10), 
+			window.innerWidth, 
+			window.innerHeight / 10
+		)
+		baseArray.forEach(ele => {
+			context.fillStyle = ele.color()
+			context.fillRect(ele.origin[0], ele.origin[1], ele.dimensions[0], ele.dimensions[1])
+		})
 
-	missleArray = missleArray.filter(ele => {
-		if (ele.cycles > 0) {
-			if (!ele.explode) {
-				context.strokeStyle = 'white'
-				context.lineWidth = 3
-				context.beginPath()
-				context.moveTo(ele.origin[0], ele.origin[1])
-				context.lineTo(
-					ele.origin[0] - (ele.vector[0] * ele.length), 
-					ele.origin[1] - (ele.vector[1] * ele.length))
-				context.stroke()
-				context.lineWidth = 1
+		missleArray = missleArray.filter(ele => {
+			if (ele.cycles > 0) {
+				if (!ele.explode) {
+					context.strokeStyle = 'white'
+					context.lineWidth = 3
+					context.beginPath()
+					context.moveTo(ele.origin[0], ele.origin[1])
+					context.lineTo(
+						ele.origin[0] - (ele.vector[0] * ele.length), 
+						ele.origin[1] - (ele.vector[1] * ele.length))
+					context.stroke()
+					context.lineWidth = 1
+				}
+				if (ele.explode) {
+					ele.drawExplosion()
+					ele.cycles--
+				} else if (ele.origin[1] >= ele.target[1]) {
+					ele.explode = true
+					baseArray[ele.base].health = Math.max(0, baseArray[ele.base].health - 1)
+				} else {
+					ele.origin[0] = ele.origin[0] + ele.vector[0] * ele.speed()
+					ele.origin[1] = ele.origin[1] + ele.vector[1] * ele.speed()
+				}
+				return ele
 			}
-			if (ele.explode) {
-				ele.drawExplosion()
-				ele.cycles--
-			} else if (ele.origin[1] >= ele.target[1]) {
-				ele.explode = true
-				baseArray[ele.base].health = Math.max(0, baseArray[ele.base].health - 1)
-			} else {
-				ele.origin[0] = ele.origin[0] + ele.vector[0] * ele.speed()
-				ele.origin[1] = ele.origin[1] + ele.vector[1] * ele.speed()
+		})
+		targetArray = targetArray.filter(ele => {
+			if (ele.cycles > 0) {
+				ele.draw()
+				return ele
 			}
-			return ele
+		})
+		if (missleDelay < 1) {
+			missleDelay = missleSpawner()
 		}
-	})
-	targetArray = targetArray.filter(ele => {
-		if (ele.cycles > 0) {
-			ele.draw()
-			return ele
+		missleDelay--
+
+		if (gameOver) {
+			clearInterval()
 		}
-	})
-	if (missleDelay < 1) {
-		missleDelay = missleSpawner()
-	}
-	missleDelay--
-}, 100)
+	}, 100)
+}
 
 //determine which base, if any, can fire at target
 function weighBases(targetX) {
