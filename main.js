@@ -135,6 +135,40 @@ const target = (event) => {
 
 document.addEventListener('click', target)
 
+const missleArray = []
+let missleDelay = 0
+const missleSpawner = () => {
+	const targetChoice = Math.floor(Math.random() * 4)
+	const missle = {
+		origin: [
+			Math.random() * (window.innerWidth - 20) + 20,
+			10
+		],
+		target: baseArray[targetChoice].fireFrom(),
+		length: 10,
+		speed: 5		
+	}
+	missle.vector = [
+		missle.target[0] - missle.origin[0],
+		missle.target[1] - missle.origin[1]
+	]
+	missle.magnitude = Math.sqrt(Math.pow(missle.vector[0], 2) 
+									+ Math.pow(missle.vector[1], 2))
+	missle.vector = [
+		missle.vector[0] / missle.magnitude,
+		missle.vector[1] / missle.magnitude,
+	]
+	if (difficulty + 3 > missleArray.length)	{
+		missleArray.push(missle)
+	}								
+	difficulty = difficulty > 20 ? 20 : Math.floor(score / 10)
+	return Math.max(1, 20 - difficulty)
+}
+
+let score = 0
+let difficulty = 1
+
+
 //gameLoop
 setInterval(() => {
 	context.clearRect(0, 0, window.innerWidth, window.innerHeight)
@@ -152,12 +186,27 @@ setInterval(() => {
 		context.fillRect(ele.origin[0], ele.origin[1], ele.dimensions[0], ele.dimensions[1])
 	})
 
+	missleArray.forEach(ele => {
+		context.strokeStyle = 'white'
+		context.beginPath()
+		context.moveTo(ele.origin[0], ele.origin[1])
+		context.lineTo(
+			ele.origin[0] - (ele.vector[0] * ele.length), 
+			ele.origin[1] - (ele.vector[1] * ele.length))
+		context.stroke()
+		ele.origin[0] = ele.origin[0] + ele.vector[0] * ele.speed
+		ele.origin[1] = ele.origin[1] + ele.vector[1] * ele.speed
+	})
 	targetArray.filter(ele => {
 		if (ele.cycles > 0) {
 			ele.draw()
 			return ele
 		}
 	})
+	if (missleDelay < 1) {
+		missleDelay = missleSpawner()
+	}
+	missleDelay--
 }, 100)
 
 //determine which base, if any, can fire at target
