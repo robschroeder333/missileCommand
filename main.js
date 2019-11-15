@@ -46,6 +46,10 @@ for (let index = 1; index <= 4; index++) {
 let targetArray = []
 //when mouse click occurs attemp to create target and fire
 const target = (event) => {
+	if (event.detail > 1) {
+		return
+	}
+	console.log(event.detail)
 	const target = {
 		cycles: 50,
 		origin: [
@@ -129,7 +133,6 @@ const target = (event) => {
 			target.explosion.size += target.explosion.maxSize / 20
 			missleArray = missleArray.filter(ele => {
 				const colided = (origin, target) => {
-					console.log(target.explosion.size)
 					return Math.pow(origin[0] - target.origin[0], 2) 
 							+ Math.pow(origin[1] - target.origin[1], 2)
 							<= Math.pow(target.explosion.size, 2)
@@ -205,8 +208,7 @@ const missleSpawner = () => {
 
 let score = 0
 let difficulty = 1
-let gameOver = false
-
+let baseCount
 
 const gameStart = function () {
 	document.getElementById('opening').remove()
@@ -224,7 +226,11 @@ const gameStart = function () {
 			window.innerWidth, 
 			window.innerHeight / 10
 		)
+		baseCount = baseArray.length
 		baseArray.forEach(ele => {
+			if (ele.health === 0) {
+				baseCount--
+			}
 			context.fillStyle = ele.color()
 			context.fillRect(ele.origin[0], ele.origin[1], ele.dimensions[0], ele.dimensions[1])
 		})
@@ -265,13 +271,17 @@ const gameStart = function () {
 			missleDelay = missleSpawner()
 		}
 		missleDelay--
-
-		if (gameOver) {
-			clearInterval()
+		if (baseCount === 0) {
+			console.log('game over attempt')
+			gameOver()
 		}
 	}, 100)
+	//make gameover screen
 }
 
+function gameOver() {
+	window.clearInterval()
+}
 //determine which base, if any, can fire at target
 function weighBases(targetX) {
 	let choice
