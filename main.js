@@ -146,7 +146,15 @@ const missleSpawner = () => {
 		],
 		target: baseArray[targetChoice].fireFrom(),
 		length: 10,
-		speed: 5		
+		speed: () => {
+			if (difficulty > 10 && difficulty < 15) {
+				return 4
+			} else if (difficulty > 15) {
+				return 5
+			} else {
+				return 3
+			}
+		}		
 	}
 	missle.vector = [
 		missle.target[0] - missle.origin[0],
@@ -194,8 +202,8 @@ setInterval(() => {
 			ele.origin[0] - (ele.vector[0] * ele.length), 
 			ele.origin[1] - (ele.vector[1] * ele.length))
 		context.stroke()
-		ele.origin[0] = ele.origin[0] + ele.vector[0] * ele.speed
-		ele.origin[1] = ele.origin[1] + ele.vector[1] * ele.speed
+		ele.origin[0] = ele.origin[0] + ele.vector[0] * ele.speed()
+		ele.origin[1] = ele.origin[1] + ele.vector[1] * ele.speed()
 	})
 	targetArray.filter(ele => {
 		if (ele.cycles > 0) {
