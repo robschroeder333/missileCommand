@@ -1,3 +1,4 @@
+'use strict'
 
 const source = document.createElement('canvas')
 assignAttributes(source, {
@@ -5,7 +6,7 @@ assignAttributes(source, {
 	height: window.innerHeight,
 	width: window.innerWidth
 })
-document.body.appendChild(source)
+
 
 const context = source.getContext('2d', {alpha: 'false'})
 
@@ -18,7 +19,7 @@ for (let index = 1; index <= 4; index++) {
 			window.innerHeight - ((window.innerHeight / 10) + (window.innerHeight / 20))
 		],
 		canFire: true,
-		health: 2,
+		health: 1,
 		dimensions: [
 			window.innerWidth / 10,
 			window.innerHeight / 10
@@ -49,7 +50,6 @@ const target = (event) => {
 	if (event.detail > 1) {
 		return
 	}
-	console.log(event.detail)
 	const target = {
 		cycles: 50,
 		origin: [
@@ -123,7 +123,8 @@ const target = (event) => {
 			}			
 		}	
 		if (target.cycles <= 25) {
-			target.line.source.canFire = true
+			
+			
 			context.fillStyle = target.explosion.color[0]
 			context.strokeStyle = target.explosion.color[1]
 			context.beginPath()
@@ -138,12 +139,16 @@ const target = (event) => {
 							<= Math.pow(target.explosion.size, 2)
 				}
 				
-				if (colided(ele.origin, target)) {					
+				if (colided(ele.origin, target) && !ele.explode) {					
 					ele.explode = true
+					score++
 				}
 				return ele
 			})
 		}	
+		if (target.cycles === 25) {
+			target.line.source.canFire = true
+		}
 		target.cycles--
 	}
 	targetArray.push(target)
@@ -209,13 +214,17 @@ const missleSpawner = () => {
 let score = 0
 let difficulty = 1
 let baseCount
+let highScore = 0
+let listener
+const gameStart = function () {	
 
-const gameStart = function () {
-	document.getElementById('opening').remove()
+	baseArray.forEach(ele => ele.health = 2)
+	score = 0
 	setTimeout(() => {
-		document.addEventListener('click', target)		
+		listener = document.addEventListener('click', target)		
 	}, 200)
-	setInterval(() => {//gameLoop
+	missleArray = []
+	const gameLoop = setInterval(() => {//gameLoop		
 		context.clearRect(0, 0, window.innerWidth, window.innerHeight)
 		context.fillStyle = 'black'
 		context.fillRect(0, 0, window.innerWidth, window.innerHeight) // background
@@ -226,6 +235,7 @@ const gameStart = function () {
 			window.innerWidth, 
 			window.innerHeight / 10
 		)
+		document.body.appendChild(source)
 		baseCount = baseArray.length
 		baseArray.forEach(ele => {
 			if (ele.health === 0) {
@@ -272,16 +282,54 @@ const gameStart = function () {
 		}
 		missleDelay--
 		if (baseCount === 0) {
-			console.log('game over attempt')
-			gameOver()
+			gameOver(gameLoop)
+		}
+		if (score !== 0 && score >= highScore) {
+			context.fillStyle = 'white'
+			context.font = '20px Georgia'
+			context.fillText(`New High Score = ${score}`, 10, 20)
+			highScore = score
+		} else {
+			context.fillStyle = 'white'
+			context.font = '20px Georgia'
+			context.fillText(`Score = ${score}`, 10, 20)
 		}
 	}, 100)
-	//make gameover screen
+}
+const button = document.createElement('button')
+button.innerHTML = 'Play Again?'
+button.onmouseup = () => {
+	button.remove()
+	hScore.remove()
+	cScore.remove()
+	gameStart()
+	return false
+}
+const cScore = document.createElement('h1')
+cScore.setAttribute('id', 'cScore')
+const hScore = document.createElement('h1')
+hScore.setAttribute('id', 'hScore')
+
+function gameOver(gameLoop) {
+	clearInterval(gameLoop)
+	clearTimeout(listener)
+	source.remove()
+	context.clearRect(0, 0, window.innerWidth, window.innerHeight)
+	context.fillStyle = 'black'
+	context.fillRect(0, 0, window.innerWidth, window.innerHeight)
+	context.fillStyle = 'white'
+	if (score === highScore) {
+		hScore.textContent = `New High Score = ${score}`
+		document.body.appendChild(hScore)
+	} else {
+		hScore.textContent = `High Score = ${highScore}`
+		cScore.textContent = `Your Score = ${score}`
+		document.body.appendChild(hScore)
+		document.body.appendChild(cScore)
+	}
+	document.body.appendChild(button)
 }
 
-function gameOver() {
-	window.clearInterval()
-}
 //determine which base, if any, can fire at target
 function weighBases(targetX) {
 	let choice
