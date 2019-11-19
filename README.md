@@ -1,2 +1,0 @@
-# missleCommand
-![game](/main.html)
