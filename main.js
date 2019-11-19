@@ -1,52 +1,181 @@
 'use strict'
 
+const baseArray = []
+let targetArray = []
+let missileArray = []
+let missileDelay = 0
+let score = 0
+let difficulty = 1
+let baseCount
+let highScore = 0
+let listener
+
 const source = document.createElement('canvas')
+const context = source.getContext('2d', {alpha: 'false'})
+const button = document.createElement('button')
+const cScore = document.createElement('h1')
+const hScore = document.createElement('h1')
+
 assignAttributes(source, {
 	id: 'source',
 	height: window.innerHeight,
 	width: window.innerWidth
 })
+button.innerHTML = 'Play Again?'
+button.onmouseup = () => {
+	button.remove()
+	hScore.remove()
+	cScore.remove()
+	gameStart()
+	return false
+}
+cScore.setAttribute('id', 'cScore')
+hScore.setAttribute('id', 'hScore')
 
 
-const context = source.getContext('2d', {alpha: 'false'})
 
-const baseArray = []
-//create bases
-for (let index = 1; index <= 4; index++) {
-	const base = {
-		origin: [
-			((window.innerWidth / 5) * index ) - ((window.innerWidth / 10) / 2),
-			window.innerHeight - ((window.innerHeight / 10) + (window.innerHeight / 20))
-		],
-		canFire: true,
-		health: 1,
-		dimensions: [
-			window.innerWidth / 10,
+function gameStart() {	
+
+	makeBases()
+	score = 0
+	setTimeout(() => { //delay click listener to prevent unintended click at beginning of game
+		listener = document.addEventListener('click', target)		
+	}, 200)
+	missileArray = []
+	const gameLoop = setInterval(() => {//gameLoop		
+		context.clearRect(0, 0, window.innerWidth, window.innerHeight)
+		context.fillStyle = 'black'
+		context.fillRect(0, 0, window.innerWidth, window.innerHeight) // background
+		context.fillStyle = 'brown'
+		context.fillRect( //ground
+			0, 
+			window.innerHeight - (window.innerHeight / 10), 
+			window.innerWidth, 
 			window.innerHeight / 10
-		],
-		color: () => {
-			switch (base.health) {
-			case 2:
-				return 'green'				
-			case 1:
-				return 'yellow'				
-			case 0:
-				return 'red'						
-			default:
-				return 'red'						
+		)
+		document.body.appendChild(source)
+		baseCount = baseArray.length
+		baseArray.forEach(ele => {
+			if (ele.health === 0) {
+				baseCount--
 			}
+			context.fillStyle = ele.color()
+			context.fillRect(ele.origin[0], ele.origin[1], ele.dimensions[0], ele.dimensions[1])
+		})
+
+		missileArray = missileArray.filter(ele => {
+			if (ele.cycles > 0) {
+				if (!ele.explode) {
+					context.strokeStyle = 'white'
+					context.lineWidth = 3
+					context.beginPath()
+					context.moveTo(ele.origin[0], ele.origin[1])
+					context.lineTo(
+						ele.origin[0] - (ele.vector[0] * ele.length), 
+						ele.origin[1] - (ele.vector[1] * ele.length))
+					context.stroke()
+					context.lineWidth = 1
+				}
+				if (ele.explode) {
+					ele.drawExplosion()
+					ele.cycles--
+				} else if (ele.origin[1] >= ele.target[1]) {
+					ele.explode = true
+					baseArray[ele.base].health = Math.max(0, baseArray[ele.base].health - 1)
+				} else {
+					ele.origin[0] = ele.origin[0] + ele.vector[0] * ele.speed()
+					ele.origin[1] = ele.origin[1] + ele.vector[1] * ele.speed()
+				}
+				return ele
+			}
+		})
+		targetArray = targetArray.filter(ele => {
+			if (ele.cycles > 0) {
+				ele.draw()
+				return ele
+			}
+		})
+		if (missileDelay < 1) {
+			missileDelay = missileSpawner()
 		}
-	}
-	base.fireFrom = () => [
-		base.origin[0] + base.dimensions[0] / 2, 
-		base.origin[1]
-	]
-	baseArray.push(base)
+		missileDelay--
+		if (baseCount === 0) {
+			gameOver(gameLoop)
+		}
+		if (score !== 0 && score >= highScore) {
+			context.fillStyle = 'white'
+			context.font = '20px Georgia'
+			context.fillText(`New High Score = ${score}`, 10, 20)
+			highScore = score
+		} else {
+			context.fillStyle = 'white'
+			context.font = '20px Georgia'
+			context.fillText(`Score = ${score}`, 10, 20)
+		}
+	}, 100)
 }
 
-let targetArray = []
+
+function gameOver(gameLoop) {
+	clearInterval(gameLoop)
+	clearTimeout(listener)
+	source.remove()
+	context.clearRect(0, 0, window.innerWidth, window.innerHeight)
+	context.fillStyle = 'black'
+	context.fillRect(0, 0, window.innerWidth, window.innerHeight)
+	context.fillStyle = 'white'
+	if (score === highScore) {
+		hScore.textContent = `New High Score = ${score}`
+		document.body.appendChild(hScore)
+	} else {
+		hScore.textContent = `High Score = ${highScore}`
+		cScore.textContent = `Your Score = ${score}`
+		document.body.appendChild(hScore)
+		document.body.appendChild(cScore)
+	}
+	document.body.appendChild(button)
+}
+
+
+//create bases
+function makeBases() {
+	for (let index = 1; index <= 4; index++) {
+		const base = {
+			origin: [
+				((window.innerWidth / 5) * index ) - ((window.innerWidth / 10) / 2),
+				window.innerHeight - ((window.innerHeight / 10) + (window.innerHeight / 20))
+			],
+			canFire: true,
+			health: 2,
+			dimensions: [
+				window.innerWidth / 10,
+				window.innerHeight / 10
+			],
+			color: () => {
+				switch (base.health) {
+				case 2:
+					return 'green'				
+				case 1:
+					return 'yellow'				
+				case 0:
+					return 'red'						
+				default:
+					return 'red'						
+				}
+			}
+		}
+		base.fireFrom = () => [
+			base.origin[0] + base.dimensions[0] / 2, 
+			base.origin[1]
+		]
+		baseArray.push(base)
+	}
+
+}
+
+
 //when mouse click occurs attemp to create target and fire
-const target = (event) => {
+function target(event) {
 	if (event.detail > 1) {
 		return
 	}
@@ -132,7 +261,7 @@ const target = (event) => {
 			context.fill()
 			context.stroke()
 			target.explosion.size += target.explosion.maxSize / 20
-			missleArray = missleArray.filter(ele => {
+			missileArray = missileArray.filter(ele => {
 				const colided = (origin, target) => {
 					return Math.pow(origin[0] - target.origin[0], 2) 
 							+ Math.pow(origin[1] - target.origin[1], 2)
@@ -156,11 +285,10 @@ const target = (event) => {
 
 
 
-let missleArray = []
-let missleDelay = 0
-const missleSpawner = () => {
+
+function missileSpawner() {
 	const targetChoice = Math.floor(Math.random() * 4)
-	const missle = {
+	const missile = {
 		origin: [
 			Math.random() * (window.innerWidth - 20) + 20,
 			10
@@ -185,150 +313,34 @@ const missleSpawner = () => {
 			size: 1
 		}			
 	}
-	missle.drawExplosion = () => {
-		context.fillStyle = missle.explosion.color[0]
-		context.strokeStyle = missle.explosion.color[1]
+	missile.drawExplosion = () => {
+		context.fillStyle = missile.explosion.color[0]
+		context.strokeStyle = missile.explosion.color[1]
 		context.beginPath()
-		context.arc(missle.origin[0], missle.origin[1], missle.explosion.size, 0, 360)
+		context.arc(missile.origin[0], missile.origin[1], missile.explosion.size, 0, 360)
 		context.fill()
 		context.stroke()
-		missle.explosion.size += missle.explosion.maxSize / 20
+		missile.explosion.size += missile.explosion.maxSize / 20
 	}	
-	missle.vector = [
-		missle.target[0] - missle.origin[0],
-		missle.target[1] - missle.origin[1]
+	missile.vector = [
+		missile.target[0] - missile.origin[0],
+		missile.target[1] - missile.origin[1]
 	]
-	missle.magnitude = Math.sqrt(Math.pow(missle.vector[0], 2) 
-									+ Math.pow(missle.vector[1], 2))
-	missle.vector = [
-		missle.vector[0] / missle.magnitude,
-		missle.vector[1] / missle.magnitude,
+	missile.magnitude = Math.sqrt(Math.pow(missile.vector[0], 2) 
+									+ Math.pow(missile.vector[1], 2))
+	missile.vector = [
+		missile.vector[0] / missile.magnitude,
+		missile.vector[1] / missile.magnitude,
 	]
-	if (difficulty + 3 > missleArray.length) {		
-		missleArray.push(missle)
+	if (difficulty + 3 > missileArray.length) {		
+		missileArray.push(missile)
 	}								
 	difficulty = difficulty > 20 ? 20 : Math.floor(score / 10)
 	return Math.max(1, 20 - difficulty)
 }
 
-let score = 0
-let difficulty = 1
-let baseCount
-let highScore = 0
-let listener
-const gameStart = function () {	
 
-	baseArray.forEach(ele => ele.health = 2)
-	score = 0
-	setTimeout(() => {
-		listener = document.addEventListener('click', target)		
-	}, 200)
-	missleArray = []
-	const gameLoop = setInterval(() => {//gameLoop		
-		context.clearRect(0, 0, window.innerWidth, window.innerHeight)
-		context.fillStyle = 'black'
-		context.fillRect(0, 0, window.innerWidth, window.innerHeight) // background
-		context.fillStyle = 'brown'
-		context.fillRect( //ground
-			0, 
-			window.innerHeight - (window.innerHeight / 10), 
-			window.innerWidth, 
-			window.innerHeight / 10
-		)
-		document.body.appendChild(source)
-		baseCount = baseArray.length
-		baseArray.forEach(ele => {
-			if (ele.health === 0) {
-				baseCount--
-			}
-			context.fillStyle = ele.color()
-			context.fillRect(ele.origin[0], ele.origin[1], ele.dimensions[0], ele.dimensions[1])
-		})
 
-		missleArray = missleArray.filter(ele => {
-			if (ele.cycles > 0) {
-				if (!ele.explode) {
-					context.strokeStyle = 'white'
-					context.lineWidth = 3
-					context.beginPath()
-					context.moveTo(ele.origin[0], ele.origin[1])
-					context.lineTo(
-						ele.origin[0] - (ele.vector[0] * ele.length), 
-						ele.origin[1] - (ele.vector[1] * ele.length))
-					context.stroke()
-					context.lineWidth = 1
-				}
-				if (ele.explode) {
-					ele.drawExplosion()
-					ele.cycles--
-				} else if (ele.origin[1] >= ele.target[1]) {
-					ele.explode = true
-					baseArray[ele.base].health = Math.max(0, baseArray[ele.base].health - 1)
-				} else {
-					ele.origin[0] = ele.origin[0] + ele.vector[0] * ele.speed()
-					ele.origin[1] = ele.origin[1] + ele.vector[1] * ele.speed()
-				}
-				return ele
-			}
-		})
-		targetArray = targetArray.filter(ele => {
-			if (ele.cycles > 0) {
-				ele.draw()
-				return ele
-			}
-		})
-		if (missleDelay < 1) {
-			missleDelay = missleSpawner()
-		}
-		missleDelay--
-		if (baseCount === 0) {
-			gameOver(gameLoop)
-		}
-		if (score !== 0 && score >= highScore) {
-			context.fillStyle = 'white'
-			context.font = '20px Georgia'
-			context.fillText(`New High Score = ${score}`, 10, 20)
-			highScore = score
-		} else {
-			context.fillStyle = 'white'
-			context.font = '20px Georgia'
-			context.fillText(`Score = ${score}`, 10, 20)
-		}
-	}, 100)
-}
-const button = document.createElement('button')
-button.innerHTML = 'Play Again?'
-button.onmouseup = () => {
-	button.remove()
-	hScore.remove()
-	cScore.remove()
-	gameStart()
-	return false
-}
-const cScore = document.createElement('h1')
-cScore.setAttribute('id', 'cScore')
-const hScore = document.createElement('h1')
-hScore.setAttribute('id', 'hScore')
-
-function gameOver(gameLoop) {
-	clearInterval(gameLoop)
-	clearTimeout(listener)
-	source.remove()
-	context.clearRect(0, 0, window.innerWidth, window.innerHeight)
-	context.fillStyle = 'black'
-	context.fillRect(0, 0, window.innerWidth, window.innerHeight)
-	context.fillStyle = 'white'
-	if (score === highScore) {
-		hScore.textContent = `New High Score = ${score}`
-		document.body.appendChild(hScore)
-	} else {
-		hScore.textContent = `High Score = ${highScore}`
-		cScore.textContent = `Your Score = ${score}`
-		document.body.appendChild(hScore)
-		document.body.appendChild(cScore)
-	}
-	document.body.appendChild(button)
-}
 
 //determine which base, if any, can fire at target
 function weighBases(targetX) {
