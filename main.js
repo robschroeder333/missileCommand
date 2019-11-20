@@ -1,6 +1,6 @@
 'use strict'
 
-const baseArray = []
+let baseArray = []
 let targetArray = []
 let missileArray = []
 let missileDelay = 0
@@ -32,67 +32,70 @@ button.onmouseup = () => {
 cScore.setAttribute('id', 'cScore')
 hScore.setAttribute('id', 'hScore')
 
-
-
 function gameStart() {	
-
-	makeBases()
+	targetArray = []
+	missileArray = []
+	baseArray = []
 	score = 0
+
 	setTimeout(() => { //delay click listener to prevent unintended click at beginning of game
 		listener = document.addEventListener('click', target)		
 	}, 200)
-	missileArray = []
-	const gameLoop = setInterval(() => {//gameLoop		
+	
+	makeBases()
+	const gameLoop = setInterval(() => {	
 		context.clearRect(0, 0, window.innerWidth, window.innerHeight)
 		context.fillStyle = 'black'
-		context.fillRect(0, 0, window.innerWidth, window.innerHeight) // background
+		context.fillRect(0, 0, window.innerWidth, window.innerHeight) //draw background
+		context.save()
 		context.fillStyle = 'brown'
-		context.fillRect( //ground
-			0, 
-			window.innerHeight - (window.innerHeight / 10), 
-			window.innerWidth, 
-			window.innerHeight / 10
-		)
+		context.translate(0, window.innerHeight - (window.innerHeight / 10))
+		context.fillRect(0, 0, window.innerWidth, window.innerHeight / 10) //draw ground
+		context.restore()
 		document.body.appendChild(source)
 		baseCount = baseArray.length
-		baseArray.forEach(ele => {
-			if (ele.health === 0) {
+
+		baseArray.forEach(base => {//draw bases
+			if (base.health === 0) {
 				baseCount--
 			}
-			context.fillStyle = ele.color()
-			context.fillRect(ele.origin[0], ele.origin[1], ele.dimensions[0], ele.dimensions[1])
+			context.save()
+			context.fillStyle = base.color()
+			context.translate(base.origin[0], base.origin[1])
+			context.fillRect(0, 0, base.dimensions[0], base.dimensions[1])
+			context.restore()
 		})
 
-		missileArray = missileArray.filter(ele => {
-			if (ele.cycles > 0) {
-				if (!ele.explode) {
+		missileArray = missileArray.filter(missile => {
+			if (missile.cycles > 0) {
+				if (!missile.explode) {//draw missile
+					context.save()
 					context.strokeStyle = 'white'
 					context.lineWidth = 3
+					context.translate(missile.origin[0], missile.origin[1])
 					context.beginPath()
-					context.moveTo(ele.origin[0], ele.origin[1])
-					context.lineTo(
-						ele.origin[0] - (ele.vector[0] * ele.length), 
-						ele.origin[1] - (ele.vector[1] * ele.length))
-					context.stroke()
-					context.lineWidth = 1
+					context.moveTo(0, 0)
+					context.lineTo(-(missile.vector[0] * missile.length), -(missile.vector[1] * missile.length))
+					context.stroke()					
+					context.restore()
 				}
-				if (ele.explode) {
-					ele.drawExplosion()
-					ele.cycles--
-				} else if (ele.origin[1] >= ele.target[1]) {
-					ele.explode = true
-					baseArray[ele.base].health = Math.max(0, baseArray[ele.base].health - 1)
+				if (missile.explode) {
+					missile.drawExplosion()
+					missile.cycles--
+				} else if (missile.origin[1] >= missile.target[1]) {
+					missile.explode = true
+					baseArray[missile.base].health = Math.max(0, baseArray[missile.base].health - 1)
 				} else {
-					ele.origin[0] = ele.origin[0] + ele.vector[0] * ele.speed()
-					ele.origin[1] = ele.origin[1] + ele.vector[1] * ele.speed()
+					missile.origin[0] = missile.origin[0] + missile.vector[0] * missile.speed()
+					missile.origin[1] = missile.origin[1] + missile.vector[1] * missile.speed()
 				}
-				return ele
+				return missile
 			}
 		})
-		targetArray = targetArray.filter(ele => {
-			if (ele.cycles > 0) {
-				ele.draw()
-				return ele
+		targetArray = targetArray.filter(target => {
+			if (target.cycles > 0) {
+				target.draw()
+				return target
 			}
 		})
 		if (missileDelay < 1) {
@@ -115,7 +118,6 @@ function gameStart() {
 	}, 100)
 }
 
-
 function gameOver(gameLoop) {
 	clearInterval(gameLoop)
 	clearTimeout(listener)
@@ -136,8 +138,6 @@ function gameOver(gameLoop) {
 	document.body.appendChild(button)
 }
 
-
-//create bases
 function makeBases() {
 	for (let index = 1; index <= 4; index++) {
 		const base = {
@@ -173,23 +173,13 @@ function makeBases() {
 
 }
 
-
 //when mouse click occurs attemp to create target and fire
 function target(event) {
-	if (event.detail > 1) {
-		return
-	}
-	const target = {
+	const target = {//initialize target object
 		cycles: 50,
-		origin: [
-			event.clientX - 8,
-			event.clientY - 8
-		],
+		origin: [event.clientX - 8, event.clientY - 8],
 		reticle: {
-			dimensions: [
-				10,
-				10
-			],
+			dimensions: [10, 10],
 			color: 'green'
 		},
 		line: {			
@@ -200,8 +190,7 @@ function target(event) {
 			maxSize: 30,
 			color: ['red', 'yellow'],
 			size: 1
-		}
-		
+		}		
 	}
 	target.reticle.offset = [
 		target.origin[0] - target.reticle.dimensions[0] / 2,
@@ -225,43 +214,46 @@ function target(event) {
 		target.line.vector[1] / target.line.magnitude
 	]
 	target.line.end = () => [
-		target.line.start[0] + ((target.line.magnitude * target.line.progress) * target.line.vector[0]), 
-		target.line.start[1] + ((target.line.magnitude * target.line.progress) * target.line.vector[1])
+		((target.line.magnitude * target.line.progress) * target.line.vector[0]), 
+		((target.line.magnitude * target.line.progress) * target.line.vector[1])
 	]
 	target.line.source.canFire = false
 
 
 	target.draw = () => {		
-		if (target.cycles > 35) {
+		if (target.cycles > 35) {//draw reticle where click happened
+			context.save()
 			context.strokeStyle = target.reticle.color
-			context.strokeRect(
-				target.reticle.offset[0], 
-				target.reticle.offset[1], 
-				target.reticle.dimensions[0],
-				target.reticle.dimensions[1]
-			)	
+			context.translate(target.reticle.offset[0], target.reticle.offset[1])
+			context.strokeRect(0, 0, target.reticle.dimensions[0], target.reticle.dimensions[1])	
+			context.restore()
 		}		
-		if (target.cycles > 15) {		
+		if (target.cycles > 15) {//draw laser	
+			context.save()	
 			context.strokeStyle = target.line.color
+			context.translate(target.line.start[0], target.line.start[1])
 			context.beginPath()
-			context.moveTo(target.line.start[0], target.line.start[1])
+			context.moveTo(0, 0)
 			context.lineTo(target.line.end()[0], target.line.end()[1])
 			context.stroke()
-			if (target.line.progress < 1 ) {
+			context.restore()
+			if (target.line.progress < 1 ) {//'animate' laser
 				target.line.progress += .04
 			}			
 		}	
-		if (target.cycles <= 25) {
-			
-			
+		if (target.cycles <= 25) {//draw explosion		
+			context.save()
 			context.fillStyle = target.explosion.color[0]
 			context.strokeStyle = target.explosion.color[1]
+			context.translate(target.origin[0], target.origin[1])
 			context.beginPath()
-			context.arc(target.origin[0], target.origin[1], target.explosion.size, 0, 360)
+			context.arc(0, 0, target.explosion.size, 0, 360)
 			context.fill()
 			context.stroke()
-			target.explosion.size += target.explosion.maxSize / 20
-			missileArray = missileArray.filter(ele => {
+			context.restore()
+			target.explosion.size += target.explosion.maxSize / 20 //'animate' explosion
+
+			missileArray = missileArray.filter(ele => {//check if the head of missile touches an explosion
 				const colided = (origin, target) => {
 					return Math.pow(origin[0] - target.origin[0], 2) 
 							+ Math.pow(origin[1] - target.origin[1], 2)
@@ -288,7 +280,7 @@ function target(event) {
 
 function missileSpawner() {
 	const targetChoice = Math.floor(Math.random() * 4)
-	const missile = {
+	const missile = {//initialize missile
 		origin: [
 			Math.random() * (window.innerWidth - 20) + 20,
 			10
@@ -314,13 +306,16 @@ function missileSpawner() {
 		}			
 	}
 	missile.drawExplosion = () => {
+		context.save()
 		context.fillStyle = missile.explosion.color[0]
 		context.strokeStyle = missile.explosion.color[1]
+		context.translate(missile.origin[0], missile.origin[1])
 		context.beginPath()
-		context.arc(missile.origin[0], missile.origin[1], missile.explosion.size, 0, 360)
+		context.arc(0, 0, missile.explosion.size, 0, 360)
 		context.fill()
 		context.stroke()
-		missile.explosion.size += missile.explosion.maxSize / 20
+		context.restore()
+		missile.explosion.size += missile.explosion.maxSize / 20//animate explosion
 	}	
 	missile.vector = [
 		missile.target[0] - missile.origin[0],
@@ -367,6 +362,7 @@ function weighBases(targetX) {
 		return null
 	}
 }
+//helper for making attribute assignment less tedious
 function assignAttributes(element, attributes) {
 	Object.keys(attributes).forEach(key => element.setAttribute(key, attributes[key]))
 }
